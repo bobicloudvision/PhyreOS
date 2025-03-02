@@ -13,6 +13,11 @@ BUSYBOX_URL="https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2"
 # ISO output filename
 ISO_NAME="phyre-os-${KERNEL_VERSION}.iso"
 
+# APT Configuration
+APT_VERSION="2.2.4"
+LIBAPT_PKG_VERSION="6.0"
+DEBIAN_RELEASE="bullseye" # Debian 11 codename
+
 # APT Repository Configuration
 REPO_NAME="PhyreOS Repository"
 REPO_URL="http://phyreos.repo/packages"
