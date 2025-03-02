@@ -355,8 +355,27 @@ create_initrd_image() {
 # Function to create GRUB configuration
 create_grub_config() {
     echo "⚙️ Creating GRUB configuration..."
+    
+    # Export all variables needed by the template
+    export KERNEL_VERSION
+    export BUSYBOX_VERSION
+    export REPO_NAME
+    export REPO_URL
+    export REPO_CODENAME
+    export REPO_COMPONENTS
+    export REPO_ARCH
+    
     # Use envsubst to properly expand variables in the template
     envsubst < $CURRENT_DIR/grub.cfg.template > "$ISODIR/boot/grub/grub.cfg"
+    
+    # Check if variables were properly substituted
+    echo "Verifying GRUB configuration..."
+    if grep -q '\$[A-Z_]\+' "$ISODIR/boot/grub/grub.cfg"; then
+        echo "⚠️ Warning: Some variables were not substituted in grub.cfg"
+        grep '\$[A-Z_]\+' "$ISODIR/boot/grub/grub.cfg"
+    else
+        echo "✅ GRUB configuration created successfully"
+    fi
 }
 
 # Function to generate ISO image
