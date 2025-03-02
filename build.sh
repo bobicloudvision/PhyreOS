@@ -51,8 +51,6 @@ build_kernel() {
     make defconfig
     make -j$(nproc)
 
-    sleep 10  # Wait to avoid errors when creating ISO image
-
     cp $WORKDIR/src/linux-*/arch/x86/boot/bzImage $ISODIR/boot/vmlinuz
 }
 
