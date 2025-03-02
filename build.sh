@@ -159,13 +159,15 @@ download_apt_packages() {
 # Function to extract APT packages
 extract_apt_packages() {
     echo "📦 Extracting APT packages..."
-    mkdir -p "$WORKDIR/apt_packages"
-    cd "$WORKDIR/apt_packages"
+    APT_PACKAGES_PATH="$WORKDIR/apt_packages"
+    mkdir -p $APT_PACKAGES_PATH
+    cd $APT_PACKAGES_PATH
+
     for pkg in *.deb; do
         echo "Extracting $pkg..."
         mkdir -p "extract_$pkg"
         cd "extract_$pkg"
-        ar x "../$pkg"
+        ar x "$APT_PACKAGES_PATH/$pkg"
         tar xf data.tar.* --strip-components=1
         cd ..
     done
