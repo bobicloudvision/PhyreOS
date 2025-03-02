@@ -76,6 +76,9 @@ echo "⚙️ Създаване на GRUB конфигурация..."
 # Use envsubst to properly expand variables in the template
 envsubst < $CURRENT_DIR/grub.cfg.template > "$ISODIR/boot/grub/grub.cfg"
 
+# Return to the original directory
+cd "$CURRENT_DIR"
+
 # Генериране на ISO образ
 echo "📀 Генериране на ISO образ: $ISO_NAME..."
 grub2-mkrescue -o "$ISO_NAME" "$ISODIR"
