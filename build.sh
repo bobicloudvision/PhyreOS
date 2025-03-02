@@ -44,7 +44,8 @@ cd linux-*/
 echo "🛠️ Компилиране на ядрото..."
 make defconfig
 make -j$(nproc)
-cp arch/x86/boot/bzImage "$ISODIR/boot/vmlinuz"
+
+cp $WORKDIR/src/linux-*/arch/x86/boot/bzImage $ISODIR/boot/vmlinuz
 
 # Изтегляне и компилиране на BusyBox
 echo "⬇️ Изтегляне на BusyBox версия $BUSYBOX_VERSION..."
