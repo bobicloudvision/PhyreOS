@@ -370,9 +370,9 @@ generate_iso() {
 # Main execution flow
 main() {
     install_dependencies
-#    prepare_directories
-#    build_kernel
-#    build_busybox
+    prepare_directories
+    build_kernel
+    build_busybox
     create_initrd_structure
     download_apt_packages
     extract_apt_packages
