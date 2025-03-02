@@ -13,11 +13,13 @@ install_dependencies() {
     if [ -f /etc/redhat-release ]; then
         sudo dnf groupinstall -y "Development Tools"
         sudo dnf install -y gcc make flex bison openssl-devel bc elfutils-libelf-devel \
-            ncurses-devel xz jq wget cpio xorriso grub2-tools-extra gettext
+            ncurses-devel xz jq wget cpio xorriso grub2-tools-extra gettext \
+            perl-Pod-Html
     elif [ -f /etc/debian_version ]; then
         sudo apt update
         sudo apt install -y build-essential flex bison libssl-dev bc libelf-dev \
-            libncurses-dev xz-utils jq wget cpio xorriso grub-pc-bin grub-common gettext-base
+            libncurses-dev xz-utils jq wget cpio xorriso grub-pc-bin grub-common gettext-base \
+            perl-doc
     else
         echo "⚠️ Unsupported distribution!"
         exit 1
@@ -66,8 +68,13 @@ build_busybox() {
     tar -xjf busybox.tar.bz2
     cd busybox-${BUSYBOX_VERSION}
 
-    echo "🛠️ Compiling BusyBox..."
+    echo "🛠️ Configuring BusyBox..."
     make defconfig
+    
+    # Disable problematic applets for AlmaLinux 9
+    sed -i 's/CONFIG_TC=y/CONFIG_TC=n/' .config
+    
+    echo "🛠️ Compiling BusyBox..."
     make -j$(nproc)
     make install CONFIG_PREFIX="$ISODIR"
 }
@@ -94,33 +101,65 @@ download_apt_packages() {
     # Define Debian mirror
     DEBIAN_MIRROR="http://ftp.debian.org/debian"
     
-    # Core APT packages
-    wget -c "$DEBIAN_MIRROR/pool/main/a/apt/apt_${APT_VERSION}_amd64.deb"
-    wget -c "$DEBIAN_MIRROR/pool/main/a/apt/apt-utils_${APT_VERSION}_amd64.deb"
-    wget -c "$DEBIAN_MIRROR/pool/main/a/apt/libapt-pkg${LIBAPT_PKG_VERSION}_${APT_VERSION}_amd64.deb"
+    # Create a temporary directory for package lists
+    mkdir -p "$WORKDIR/apt_lists"
+    cd "$WORKDIR/apt_lists"
     
-    # Dependencies for Debian Bullseye (11)
-    if [ "$DEBIAN_RELEASE" = "bullseye" ]; then
-        wget -c "$DEBIAN_MIRROR/pool/main/g/glibc/libc6_2.31-13+deb11u5_amd64.deb"
-        wget -c "$DEBIAN_MIRROR/pool/main/g/gcc-10/libstdc++6_10.2.1-6_amd64.deb"
-        wget -c "$DEBIAN_MIRROR/pool/main/g/gcc-10/libgcc-s1_10.2.1-6_amd64.deb"
-        wget -c "$DEBIAN_MIRROR/pool/main/z/zlib/zlib1g_1.2.11.dfsg-2+deb11u2_amd64.deb"
-        wget -c "$DEBIAN_MIRROR/pool/main/b/bzip2/libbz2-1.0_1.0.8-4_amd64.deb"
-        wget -c "$DEBIAN_MIRROR/pool/main/l/lz4/liblz4-1_1.9.3-2_amd64.deb"
-        wget -c "$DEBIAN_MIRROR/pool/main/x/xz-utils/liblzma5_5.2.5-2.1~deb11u1_amd64.deb"
-        wget -c "$DEBIAN_MIRROR/pool/main/libz/libzstd/libzstd1_1.4.8+dfsg-2.1_amd64.deb"
-        wget -c "$DEBIAN_MIRROR/pool/main/g/glibc/libselinux1_3.1-3_amd64.deb"
-        wget -c "$DEBIAN_MIRROR/pool/main/g/glibc/libsystemd0_247.3-7+deb11u2_amd64.deb"
-        wget -c "$DEBIAN_MIRROR/pool/main/g/glibc/libgcrypt20_1.8.7-6_amd64.deb"
-    else
-        # For other Debian releases, you would add appropriate package versions here
-        echo "⚠️ Warning: Using Debian $DEBIAN_RELEASE, package versions may need adjustment"
-    fi
+    # Download package lists for the stable release
+    echo "📋 Downloading package lists..."
+    wget -q "$DEBIAN_MIRROR/dists/$DEBIAN_RELEASE/main/binary-amd64/Packages.gz"
+    gunzip -f Packages.gz
+    
+    # Function to extract latest package URL
+    get_package_url() {
+        local package_name="$1"
+        grep -A 20 "Package: $package_name$" Packages | grep "Filename:" | head -1 | awk '{print $2}'
+    }
+    
+    # Get URLs for required packages
+    APT_URL=$(get_package_url "apt")
+    APT_UTILS_URL=$(get_package_url "apt-utils")
+    LIBAPT_PKG_URL=$(get_package_url "libapt-pkg")
+    LIBC6_URL=$(get_package_url "libc6")
+    LIBSTDCPP6_URL=$(get_package_url "libstdc++6")
+    LIBGCC_URL=$(get_package_url "libgcc-s1")
+    ZLIB_URL=$(get_package_url "zlib1g")
+    LIBBZ2_URL=$(get_package_url "libbz2-1.0")
+    LIBLZ4_URL=$(get_package_url "liblz4-1")
+    LIBLZMA_URL=$(get_package_url "liblzma5")
+    LIBZSTD_URL=$(get_package_url "libzstd1")
+    LIBSELINUX_URL=$(get_package_url "libselinux1")
+    LIBSYSTEMD_URL=$(get_package_url "libsystemd0")
+    LIBGCRYPT_URL=$(get_package_url "libgcrypt20")
+    
+    # Download packages
+    mkdir -p "$WORKDIR/apt_packages"
+    cd "$WORKDIR/apt_packages"
+    echo "⬇️ Downloading APT and dependencies..."
+    
+    # Core APT packages
+    wget -c "$DEBIAN_MIRROR/$APT_URL" -O apt.deb
+    wget -c "$DEBIAN_MIRROR/$APT_UTILS_URL" -O apt-utils.deb
+    wget -c "$DEBIAN_MIRROR/$LIBAPT_PKG_URL" -O libapt-pkg.deb
+    
+    # Dependencies
+    wget -c "$DEBIAN_MIRROR/$LIBC6_URL" -O libc6.deb
+    wget -c "$DEBIAN_MIRROR/$LIBSTDCPP6_URL" -O libstdc++6.deb
+    wget -c "$DEBIAN_MIRROR/$LIBGCC_URL" -O libgcc-s1.deb
+    wget -c "$DEBIAN_MIRROR/$ZLIB_URL" -O zlib1g.deb
+    wget -c "$DEBIAN_MIRROR/$LIBBZ2_URL" -O libbz2.deb
+    wget -c "$DEBIAN_MIRROR/$LIBLZ4_URL" -O liblz4.deb
+    wget -c "$DEBIAN_MIRROR/$LIBLZMA_URL" -O liblzma.deb
+    wget -c "$DEBIAN_MIRROR/$LIBZSTD_URL" -O libzstd.deb
+    wget -c "$DEBIAN_MIRROR/$LIBSELINUX_URL" -O libselinux.deb
+    wget -c "$DEBIAN_MIRROR/$LIBSYSTEMD_URL" -O libsystemd.deb
+    wget -c "$DEBIAN_MIRROR/$LIBGCRYPT_URL" -O libgcrypt.deb
 }
 
 # Function to extract APT packages
 extract_apt_packages() {
     echo "📦 Extracting APT packages..."
+    mkdir -p "$WORKDIR/apt_packages"
     cd "$WORKDIR/apt_packages"
     for pkg in *.deb; do
         echo "Extracting $pkg..."
@@ -138,9 +177,9 @@ copy_apt_to_initrd() {
     cd "$WORKDIR/apt_packages"
     
     # Copy APT binaries and libraries
-    cp -a extract_apt_*/usr/bin/apt* "$WORKDIR/initrd/usr/bin/"
-    cp -a extract_apt_*/usr/lib/apt "$WORKDIR/initrd/usr/lib/"
-    cp -a extract_libapt-pkg*/usr/lib/x86_64-linux-gnu/* "$WORKDIR/initrd/usr/lib/"
+    cp -a extract_apt.deb/usr/bin/apt* "$WORKDIR/initrd/usr/bin/" 2>/dev/null || true
+    cp -a extract_apt.deb/usr/lib/apt "$WORKDIR/initrd/usr/lib/" 2>/dev/null || true
+    cp -a extract_libapt-pkg.deb/usr/lib/x86_64-linux-gnu/* "$WORKDIR/initrd/usr/lib/" 2>/dev/null || true
 
     # Copy required shared libraries
     echo "📦 Copying shared libraries..."
@@ -159,6 +198,14 @@ copy_apt_to_initrd() {
             cp -a "$extract_dir/usr/lib/x86_64-linux-gnu/"* "$WORKDIR/initrd/usr/lib/x86_64-linux-gnu/" 2>/dev/null || true
         fi
     done
+    
+    # Make sure all required directories exist in the initrd
+    mkdir -p "$WORKDIR/initrd/usr/lib/x86_64-linux-gnu"
+    
+    # Create symlinks for compatibility if needed
+    if [ ! -e "$WORKDIR/initrd/usr/bin/apt-get" ] && [ -e "$WORKDIR/initrd/usr/bin/apt" ]; then
+        ln -sf apt "$WORKDIR/initrd/usr/bin/apt-get"
+    fi
 }
 
 # Function to set up repository structure
@@ -208,9 +255,9 @@ generate_iso() {
 # Main execution flow
 main() {
     install_dependencies
-    prepare_directories
-    build_kernel
-    build_busybox
+#    prepare_directories
+#    build_kernel
+#    build_busybox
     create_initrd_structure
     download_apt_packages
     extract_apt_packages
