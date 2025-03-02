@@ -2,13 +2,11 @@
 
 set -e
 
-# Определяне на версии и директории
-KERNEL_VERSION=$(curl -s https://www.kernel.org/releases.json | jq -r '.latest_stable.version')
-WORKDIR="phyre_os"
-ISODIR="$WORKDIR/iso"
-KERNEL_URL="https://cdn.kernel.org/pub/linux/kernel/v$(echo $KERNEL_VERSION | cut -d'.' -f1).x/linux-${KERNEL_VERSION}.tar.xz"
-BUSYBOX_VERSION="1.35.0"  # Можете да актуализирате версията, ако е необходимо
-BUSYBOX_URL="https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2"
+CURRENT_DIR=$(pwd)
+
+# Зареждане на конфигурационния файл
+source $CURRENT_DIR/config.sh
+
 
 # Инсталиране на нужните пакети
 echo "📦 Инсталиране на зависимости..."
@@ -68,29 +66,16 @@ make install CONFIG_PREFIX="$ISODIR"
 # Създаване на initrd (минимален)
 echo "📦 Създаване на initrd..."
 
-set +H  # Disable history expansion temporarily
-echo -e "#!/bin/sh\nexec /bin/sh" > "$WORKDIR/initrd/init"
-
+mkdir -p "$WORKDIR/initrd"
+cp $CURRENT_DIR/init.sh "$WORKDIR/initrd/init"
 chmod +x "$WORKDIR/initrd/init"
 ( cd "$WORKDIR/initrd" && find . | cpio -o --format=newc ) | gzip > "$ISODIR/boot/initrd.img"
 
 # Създаване на GRUB конфигурация
 echo "⚙️ Създаване на GRUB конфигурация..."
-cat > "$ISODIR/boot/grub/grub.cfg" <<EOF
-set timeout=5
-set default=0
+cat $CURRENT_DIR/grub.cfg.template > "$ISODIR/boot/grub/grub.cfg"
 
-menuentry "PhyreOS" {
-    linux /boot/vmlinuz quiet
-    initrd /boot/initrd.img
-    echo "PhyreOS Version: $KERNEL_VERSION"
-    echo "Linux Kernel Version: $KERNEL_VERSION"
-    echo "BusyBox Version: $BUSYBOX_VERSION"
-}
-EOF
-
-# Генериране на ISO образ с версия в името
-ISO_NAME="phyre-os-${KERNEL_VERSION}.iso"
+# Генериране на ISO образ
 echo "📀 Генериране на ISO образ: $ISO_NAME..."
 grub2-mkrescue -o "$ISO_NAME" "$ISODIR"
 

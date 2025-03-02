@@ -1,0 +1,10 @@
+set timeout=5
+set default=0
+
+menuentry "PhyreOS" {
+    linux /boot/vmlinuz quiet
+    initrd /boot/initrd.img
+    echo "PhyreOS Version: $KERNEL_VERSION"
+    echo "Linux Kernel Version: $KERNEL_VERSION"
+    echo "BusyBox Version: $BUSYBOX_VERSION"
+}
