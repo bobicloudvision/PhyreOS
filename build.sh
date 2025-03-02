@@ -63,12 +63,52 @@ make defconfig
 make -j$(nproc)
 make install CONFIG_PREFIX="$ISODIR"
 
-# Създаване на initrd (минимален)
-echo "📦 Създаване на initrd..."
+# Създаване на initrd с APT
+echo "📦 Създаване на initrd с APT..."
 
 mkdir -p "$WORKDIR/initrd"
+mkdir -p "$WORKDIR/initrd/etc/apt"
+mkdir -p "$WORKDIR/initrd/var/lib/apt/lists"
+mkdir -p "$WORKDIR/initrd/var/cache/apt/archives"
+mkdir -p "$WORKDIR/initrd/usr/bin"
+mkdir -p "$WORKDIR/initrd/usr/lib"
+
+# Copy APT binaries and libraries from host system
+echo "📦 Копиране на APT пакети..."
+cp /usr/bin/apt-get "$WORKDIR/initrd/usr/bin/"
+cp /usr/bin/apt "$WORKDIR/initrd/usr/bin/"
+cp /usr/bin/apt-cache "$WORKDIR/initrd/usr/bin/"
+cp /usr/lib/apt "$WORKDIR/initrd/usr/lib/" -r
+
+# Copy required shared libraries
+echo "📦 Копиране на споделени библиотеки..."
+for bin in apt-get apt apt-cache; do
+    for lib in $(ldd /usr/bin/$bin | grep -o '/lib[^ ]*' | sort | uniq); do
+        mkdir -p "$WORKDIR/initrd$(dirname $lib)"
+        cp $lib "$WORKDIR/initrd$lib"
+    done
+done
+
+# Set up custom repository
+echo "📦 Създаване на структура за хранилище на пакети..."
+mkdir -p "$WORKDIR/repo/dists/stable/main/binary-amd64"
+mkdir -p "$WORKDIR/repo/pool/main"
+
+# Create repository metadata
+echo "📦 Създаване на метаданни за хранилището..."
+cat > "$WORKDIR/repo/dists/stable/main/binary-amd64/Release" << EOF
+Archive: stable
+Component: main
+Origin: PhyreOS
+Label: PhyreOS Custom Repository
+Architecture: amd64
+EOF
+
+# Copy init script
 cp $CURRENT_DIR/init.sh "$WORKDIR/initrd/init"
 chmod +x "$WORKDIR/initrd/init"
+
+# Create the initrd image
 ( cd "$WORKDIR/initrd" && find . | cpio -o --format=newc ) | gzip > "$ISODIR/boot/initrd.img"
 
 # Създаване на GRUB конфигурация

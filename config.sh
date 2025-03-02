@@ -12,3 +12,10 @@ BUSYBOX_URL="https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2"
 
 # ISO output filename
 ISO_NAME="phyre-os-${KERNEL_VERSION}.iso"
+
+# APT Repository Configuration
+REPO_NAME="PhyreOS Repository"
+REPO_URL="http://phyreos.repo/packages"
+REPO_CODENAME="stable"
+REPO_COMPONENTS="main"
+REPO_ARCH="amd64"
