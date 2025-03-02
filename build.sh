@@ -67,8 +67,10 @@ make install CONFIG_PREFIX="$ISODIR"
 
 # Създаване на initrd (минимален)
 echo "📦 Създаване на initrd..."
-mkdir -p "$WORKDIR/initrd"
+
+set +H  # Disable history expansion temporarily
 echo -e "#!/bin/sh\nexec /bin/sh" > "$WORKDIR/initrd/init"
+
 chmod +x "$WORKDIR/initrd/init"
 ( cd "$WORKDIR/initrd" && find . | cpio -o --format=newc ) | gzip > "$ISODIR/boot/initrd.img"
 
