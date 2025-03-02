@@ -329,15 +329,28 @@ setup_repository() {
     mkdir -p "$WORKDIR/repo/dists/stable/main/binary-amd64"
     mkdir -p "$WORKDIR/repo/pool/main"
 
-    # Create repository metadata
+    # Export variables for the template
+    export REPO_NAME
+    export REPO_URL
+    export REPO_CODENAME
+    export REPO_COMPONENTS
+    export REPO_ARCH
+    
+    # Create repository metadata using template
     echo "📦 Creating repository metadata..."
-    cat > "$WORKDIR/repo/dists/stable/main/binary-amd64/Release" << EOF
-Archive: stable
-Component: main
-Origin: PhyreOS
-Label: PhyreOS Custom Repository
-Architecture: amd64
-EOF
+    envsubst < $CURRENT_DIR/release.template > "$WORKDIR/repo/dists/stable/main/binary-amd64/Release"
+    
+    # Verify template substitution
+    echo "Verifying Release file..."
+    if grep -q '\$[A-Z_]\+' "$WORKDIR/repo/dists/stable/main/binary-amd64/Release"; then
+        echo "⚠️ Warning: Some variables were not substituted in Release file"
+        grep '\$[A-Z_]\+' "$WORKDIR/repo/dists/stable/main/binary-amd64/Release"
+    else
+        echo "✅ Release file created successfully"
+    fi
+    
+    # Also create the main Release file
+    envsubst < $CURRENT_DIR/release.template > "$WORKDIR/repo/dists/stable/Release"
 }
 
 # Function to create initrd image

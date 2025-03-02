@@ -1,0 +1,8 @@
+Archive: stable
+Component: main
+Origin: PhyreOS
+Label: $REPO_NAME
+Architecture: $REPO_ARCH
+Codename: $REPO_CODENAME
+Components: $REPO_COMPONENTS
+Description: PhyreOS Custom Package Repository
