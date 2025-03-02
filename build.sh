@@ -225,73 +225,64 @@ extract_apt_packages() {
     mkdir -p $APT_PACKAGES_PATH
     cd $APT_PACKAGES_PATH
 
-    # Make sure we have the necessary tools for AlmaLinux
-    if ! command -v ar &> /dev/null; then
-        echo "⚠️ 'ar' command not found. Installing binutils..."
-        sudo dnf install -y binutils
-    fi
+    # Install required tools if missing
+    command -v ar &>/dev/null || sudo dnf install -y binutils
+    command -v xz &>/dev/null || sudo dnf install -y xz
     
-    if ! command -v xz &> /dev/null; then
-        echo "⚠️ 'xz' command not found. Installing xz..."
-        sudo dnf install -y xz
-    fi
-    
-    # Use ar + tar method for extraction on AlmaLinux
+    # Extract all .deb packages
     echo "Using ar + tar for extraction..."
     for pkg in *.deb; do
-        if [ -f "$pkg" ]; then
-            echo "Extracting $pkg..."
-            mkdir -p "extract_$pkg"
-            cd "extract_$pkg"
-            
-            # Try to extract with ar
-            if ! ar x "../$pkg" 2>/dev/null; then
-                echo "⚠️ ar extraction failed for $pkg."
-                cd ..
-                continue
-            fi
-            
-            # Extract the data.tar.* file
-            if ls data.tar.* 1> /dev/null 2>&1; then
-                # Determine the compression type and extract accordingly
-                if [ -f data.tar.xz ]; then
-                    tar xf data.tar.xz
-                elif [ -f data.tar.gz ]; then
-                    tar xzf data.tar.gz
-                elif [ -f data.tar.bz2 ]; then
-                    tar xjf data.tar.bz2
-                elif [ -f data.tar.zst ]; then
-                    # For zstd compressed tarballs, we need zstd
-                    if ! command -v zstd &> /dev/null; then
-                        echo "⚠️ 'zstd' command not found. Installing zstd..."
-                        sudo dnf install -y zstd
-                    fi
-                    zstd -d data.tar.zst -o data.tar
-                    tar xf data.tar
-                    rm data.tar
-                elif [ -f data.tar ]; then
-                    tar xf data.tar
-                else
-                    echo "⚠️ No recognized data.tar.* found in $pkg"
-                fi
-            else
-                echo "⚠️ No data.tar.* found in $pkg"
-            fi
-            
+        [ -f "$pkg" ] || continue
+        
+        echo "Extracting $pkg..."
+        mkdir -p "extract_$pkg"
+        cd "extract_$pkg"
+        
+        # Extract with ar
+        ar x "../$pkg" 2>/dev/null || { echo "⚠️ ar extraction failed for $pkg."; cd ..; continue; }
+        
+        # Find and extract data.tar.* based on extension
+        DATA_TAR=$(ls data.tar.* 2>/dev/null || echo "")
+        if [ -z "$DATA_TAR" ]; then
+            echo "⚠️ No data.tar.* found in $pkg"
             cd ..
+            continue
         fi
+        
+        # Extract based on compression type
+        case "$DATA_TAR" in
+            data.tar.xz)
+                tar xf "$DATA_TAR"
+                ;;
+            data.tar.gz)
+                tar xzf "$DATA_TAR"
+                ;;
+            data.tar.bz2)
+                tar xjf "$DATA_TAR"
+                ;;
+            data.tar.zst)
+                command -v zstd &>/dev/null || sudo dnf install -y zstd
+                zstd -d "$DATA_TAR" -o data.tar && tar xf data.tar && rm data.tar
+                ;;
+            data.tar)
+                tar xf "$DATA_TAR"
+                ;;
+            *)
+                echo "⚠️ Unknown compression format: $DATA_TAR"
+                ;;
+        esac
+        
+        cd ..
     done
     
     # Verify extraction results
     echo "📋 Verifying extraction results..."
     for extract_dir in extract_*; do
-        if [ -d "$extract_dir" ]; then
-            file_count=$(find "$extract_dir" -type f | wc -l)
-            echo "$extract_dir contains $file_count files"
-            if [ $file_count -eq 0 ]; then
-                echo "⚠️ Warning: No files extracted in $extract_dir"
-            fi
-        fi
+        [ -d "$extract_dir" ] || continue
+        
+        file_count=$(find "$extract_dir" -type f | wc -l)
+        echo "$extract_dir contains $file_count files"
+        [ $file_count -eq 0 ] && echo "⚠️ Warning: No files extracted in $extract_dir"
     done
 }
 
