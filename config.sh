@@ -16,6 +16,10 @@ ISO_NAME="phyre-os-${KERNEL_VERSION}.iso"
 
 # APT Configuration
 DEBIAN_RELEASE="stable" # Use stable instead of specific release name
+DEBIAN_MIRROR="http://deb.debian.org/debian" # Use the most reliable Debian mirror
+
+# Debian Repository Configuration
+DEBIAN_MIRROR="http://deb.debian.org/debian"
 
 # APT Repository Configuration
 REPO_NAME="PhyreOS Repository"

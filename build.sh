@@ -96,18 +96,29 @@ create_initrd_structure() {
 # Function to download APT packages
 download_apt_packages() {
     echo "⬇️ Downloading APT packages from Debian repository..."
+    mkdir -p "$WORKDIR/apt_packages"
     cd "$WORKDIR/apt_packages"
-    
-    # Define Debian mirror
-    DEBIAN_MIRROR="http://ftp.debian.org/debian"
     
     # Create a temporary directory for package lists
     mkdir -p "$WORKDIR/apt_lists"
     cd "$WORKDIR/apt_lists"
     
-    # Download package lists for the stable release
+    # Download package lists for the stable release with retry
     echo "📋 Downloading package lists..."
-    wget -q "$DEBIAN_MIRROR/dists/$DEBIAN_RELEASE/main/binary-amd64/Packages.gz"
+    wget --tries=3 --timeout=15 --waitretry=5 "$DEBIAN_MIRROR/dists/$DEBIAN_RELEASE/main/binary-amd64/Packages.gz"
+    
+    # Check if download was successful
+    if [ ! -f "Packages.gz" ]; then
+        echo "❌ Failed to download package lists. Trying alternative mirror..."
+        DEBIAN_MIRROR="http://ftp.us.debian.org/debian" # Fallback mirror
+        wget --tries=3 --timeout=15 --waitretry=5 "$DEBIAN_MIRROR/dists/$DEBIAN_RELEASE/main/binary-amd64/Packages.gz"
+        
+        if [ ! -f "Packages.gz" ]; then
+            echo "❌ Failed to download package lists from alternative mirror. Exiting."
+            exit 1
+        fi
+    fi
+    
     gunzip -f Packages.gz
     
     # Function to extract latest package URL
@@ -119,7 +130,13 @@ download_apt_packages() {
     # Get URLs for required packages
     APT_URL=$(get_package_url "apt")
     APT_UTILS_URL=$(get_package_url "apt-utils")
-    LIBAPT_PKG_URL=$(get_package_url "libapt-pkg")
+    LIBAPT_PKG_URL=$(get_package_url "libapt-pkg6.0")
+    if [ -z "$LIBAPT_PKG_URL" ]; then
+        LIBAPT_PKG_URL=$(get_package_url "libapt-pkg5.0")
+    fi
+    if [ -z "$LIBAPT_PKG_URL" ]; then
+        LIBAPT_PKG_URL=$(get_package_url "libapt-pkg")
+    fi
     LIBC6_URL=$(get_package_url "libc6")
     LIBSTDCPP6_URL=$(get_package_url "libstdc++6")
     LIBGCC_URL=$(get_package_url "libgcc-s1")
@@ -132,28 +149,73 @@ download_apt_packages() {
     LIBSYSTEMD_URL=$(get_package_url "libsystemd0")
     LIBGCRYPT_URL=$(get_package_url "libgcrypt20")
     
+    # Function to download package with retry
+    download_package() {
+        local url="$1"
+        local output="$2"
+        local max_retries=3
+        local retry=0
+        local success=false
+        
+        while [ $retry -lt $max_retries ] && [ "$success" = false ]; do
+            echo "Downloading $output (attempt $((retry+1))/$max_retries)..."
+            wget --tries=3 --timeout=15 --waitretry=5 "$DEBIAN_MIRROR/$url" -O "$output"
+            
+            # Verify the package
+            if [ -f "$output" ] && [ $(stat -c%s "$output") -gt 1000 ]; then
+                echo "✅ Successfully downloaded $output"
+                success=true
+            else
+                echo "⚠️ Download failed or file too small. Retrying..."
+                rm -f "$output"
+                retry=$((retry+1))
+            fi
+        done
+        
+        if [ "$success" = false ]; then
+            echo "❌ Failed to download $output after $max_retries attempts."
+            return 1
+        fi
+        
+        return 0
+    }
+    
     # Download packages
     mkdir -p "$WORKDIR/apt_packages"
     cd "$WORKDIR/apt_packages"
     echo "⬇️ Downloading APT and dependencies..."
     
     # Core APT packages
-    wget -c "$DEBIAN_MIRROR/$APT_URL" -O apt.deb
-    wget -c "$DEBIAN_MIRROR/$APT_UTILS_URL" -O apt-utils.deb
-    wget -c "$DEBIAN_MIRROR/$LIBAPT_PKG_URL" -O libapt-pkg.deb
+    download_package "$APT_URL" "apt.deb" || exit 1
+    download_package "$APT_UTILS_URL" "apt-utils.deb" || exit 1
+    download_package "$LIBAPT_PKG_URL" "libapt-pkg.deb" || exit 1
     
     # Dependencies
-    wget -c "$DEBIAN_MIRROR/$LIBC6_URL" -O libc6.deb
-    wget -c "$DEBIAN_MIRROR/$LIBSTDCPP6_URL" -O libstdc++6.deb
-    wget -c "$DEBIAN_MIRROR/$LIBGCC_URL" -O libgcc-s1.deb
-    wget -c "$DEBIAN_MIRROR/$ZLIB_URL" -O zlib1g.deb
-    wget -c "$DEBIAN_MIRROR/$LIBBZ2_URL" -O libbz2.deb
-    wget -c "$DEBIAN_MIRROR/$LIBLZ4_URL" -O liblz4.deb
-    wget -c "$DEBIAN_MIRROR/$LIBLZMA_URL" -O liblzma.deb
-    wget -c "$DEBIAN_MIRROR/$LIBZSTD_URL" -O libzstd.deb
-    wget -c "$DEBIAN_MIRROR/$LIBSELINUX_URL" -O libselinux.deb
-    wget -c "$DEBIAN_MIRROR/$LIBSYSTEMD_URL" -O libsystemd.deb
-    wget -c "$DEBIAN_MIRROR/$LIBGCRYPT_URL" -O libgcrypt.deb
+    download_package "$LIBC6_URL" "libc6.deb" || exit 1
+    download_package "$LIBSTDCPP6_URL" "libstdc++6.deb" || exit 1
+    download_package "$LIBGCC_URL" "libgcc-s1.deb" || exit 1
+    download_package "$ZLIB_URL" "zlib1g.deb" || exit 1
+    download_package "$LIBBZ2_URL" "libbz2.deb" || exit 1
+    download_package "$LIBLZ4_URL" "liblz4.deb" || exit 1
+    download_package "$LIBLZMA_URL" "liblzma.deb" || exit 1
+    download_package "$LIBZSTD_URL" "libzstd.deb" || exit 1
+    download_package "$LIBSELINUX_URL" "libselinux.deb" || exit 1
+    download_package "$LIBSYSTEMD_URL" "libsystemd.deb" || exit 1
+    download_package "$LIBGCRYPT_URL" "libgcrypt.deb" || exit 1
+    
+    # Verify all downloaded packages
+    echo "📋 Verifying downloaded packages..."
+    for pkg in *.deb; do
+        if [ -f "$pkg" ]; then
+            pkg_size=$(stat -c%s "$pkg")
+            echo "Package $pkg size: $pkg_size bytes"
+            
+            # Basic size check (most .deb packages should be at least 10KB)
+            if [ $pkg_size -lt 10000 ]; then
+                echo "⚠️ Warning: $pkg is suspiciously small ($pkg_size bytes)"
+            fi
+        fi
+    done
 }
 
 # Function to extract APT packages
@@ -163,13 +225,73 @@ extract_apt_packages() {
     mkdir -p $APT_PACKAGES_PATH
     cd $APT_PACKAGES_PATH
 
+    # Make sure we have the necessary tools for AlmaLinux
+    if ! command -v ar &> /dev/null; then
+        echo "⚠️ 'ar' command not found. Installing binutils..."
+        sudo dnf install -y binutils
+    fi
+    
+    if ! command -v xz &> /dev/null; then
+        echo "⚠️ 'xz' command not found. Installing xz..."
+        sudo dnf install -y xz
+    fi
+    
+    # Use ar + tar method for extraction on AlmaLinux
+    echo "Using ar + tar for extraction..."
     for pkg in *.deb; do
-        echo "Extracting $pkg..."
-        mkdir -p "extract_$pkg"
-        cd "extract_$pkg"
-        ar x "$APT_PACKAGES_PATH/$pkg"
-        tar xf data.tar.* --strip-components=1
-        cd ..
+        if [ -f "$pkg" ]; then
+            echo "Extracting $pkg..."
+            mkdir -p "extract_$pkg"
+            cd "extract_$pkg"
+            
+            # Try to extract with ar
+            if ! ar x "../$pkg" 2>/dev/null; then
+                echo "⚠️ ar extraction failed for $pkg."
+                cd ..
+                continue
+            fi
+            
+            # Extract the data.tar.* file
+            if ls data.tar.* 1> /dev/null 2>&1; then
+                # Determine the compression type and extract accordingly
+                if [ -f data.tar.xz ]; then
+                    tar xf data.tar.xz
+                elif [ -f data.tar.gz ]; then
+                    tar xzf data.tar.gz
+                elif [ -f data.tar.bz2 ]; then
+                    tar xjf data.tar.bz2
+                elif [ -f data.tar.zst ]; then
+                    # For zstd compressed tarballs, we need zstd
+                    if ! command -v zstd &> /dev/null; then
+                        echo "⚠️ 'zstd' command not found. Installing zstd..."
+                        sudo dnf install -y zstd
+                    fi
+                    zstd -d data.tar.zst -o data.tar
+                    tar xf data.tar
+                    rm data.tar
+                elif [ -f data.tar ]; then
+                    tar xf data.tar
+                else
+                    echo "⚠️ No recognized data.tar.* found in $pkg"
+                fi
+            else
+                echo "⚠️ No data.tar.* found in $pkg"
+            fi
+            
+            cd ..
+        fi
+    done
+    
+    # Verify extraction results
+    echo "📋 Verifying extraction results..."
+    for extract_dir in extract_*; do
+        if [ -d "$extract_dir" ]; then
+            file_count=$(find "$extract_dir" -type f | wc -l)
+            echo "$extract_dir contains $file_count files"
+            if [ $file_count -eq 0 ]; then
+                echo "⚠️ Warning: No files extracted in $extract_dir"
+            fi
+        fi
     done
 }
 
