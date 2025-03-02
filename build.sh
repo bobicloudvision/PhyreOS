@@ -12,10 +12,10 @@ source $CURRENT_DIR/config.sh
 echo "📦 Инсталиране на зависимости..."
 if [ -f /etc/redhat-release ]; then
     sudo dnf groupinstall -y "Development Tools"
-    sudo dnf install -y gcc make flex bison openssl-devel bc elfutils-libelf-devel ncurses-devel xz jq wget cpio xorriso grub2-tools-extra
+    sudo dnf install -y gcc make flex bison openssl-devel bc elfutils-libelf-devel ncurses-devel xz jq wget cpio xorriso grub2-tools-extra gettext
 elif [ -f /etc/debian_version ]; then
     sudo apt update
-    sudo apt install -y build-essential flex bison libssl-dev bc libelf-dev libncurses-dev xz-utils jq wget cpio xorriso grub-pc-bin grub-common
+    sudo apt install -y build-essential flex bison libssl-dev bc libelf-dev libncurses-dev xz-utils jq wget cpio xorriso grub-pc-bin grub-common gettext-base
 else
     echo "⚠️ Неподдържана дистрибуция!"
     exit 1
@@ -73,7 +73,8 @@ chmod +x "$WORKDIR/initrd/init"
 
 # Създаване на GRUB конфигурация
 echo "⚙️ Създаване на GRUB конфигурация..."
-cat $CURRENT_DIR/grub.cfg.template > "$ISODIR/boot/grub/grub.cfg"
+# Use envsubst to properly expand variables in the template
+envsubst < $CURRENT_DIR/grub.cfg.template > "$ISODIR/boot/grub/grub.cfg"
 
 # Генериране на ISO образ
 echo "📀 Генериране на ISO образ: $ISO_NAME..."
