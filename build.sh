@@ -48,7 +48,8 @@ build_kernel() {
     cd linux-*/
 
     echo "🛠️ Compiling kernel..."
-    make defconfig
+    make menuconfig
+#    make defconfig
     make -j$(nproc)
 
     cp $WORKDIR/src/linux-*/arch/x86/boot/bzImage $ISODIR/boot/vmlinuz
@@ -86,7 +87,7 @@ build_busybox() {
 }
 
 # Function to create initrd directory structure
-create_initrd_structure() { 
+create_initrd_structure() {
     echo "📦 Creating initrd structure..."
     mkdir -p "$WORKDIR/initrd"
     mkdir -p "$WORKDIR/initrd/etc/apt"
