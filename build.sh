@@ -92,6 +92,7 @@ build_busybox() {
     echo "🛠️ Configuring BusyBox..."
     make defconfig
 
+
 #    sed 's/^.*CONFIG_STATIC.*$/CONFIG_STATIC=y/' -i .config
 #    sed 's/^CONFIG_MAN=y/CONFIG_MAN=n/' -i .config
 #    echo "CONFIG_STATIC_LIBGCC=y" >> .config
@@ -104,8 +105,8 @@ build_busybox() {
 
     echo "🛠️ Compiling BusyBox..."
     make clean
-    make -j$(nproc) -k
-    make -s CONFIG_PREFIX="$ISODIR" install -k
+    make -j$(nproc)
+    make -s CONFIG_PREFIX="$ISODIR" install
 }
 
 # Function to create initrd directory structure
