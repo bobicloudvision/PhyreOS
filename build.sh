@@ -75,14 +75,14 @@ build_busybox() {
     cd busybox-${BUSYBOX_VERSION}
 
     echo "🛠️ Configuring BusyBox..."
-    make defconfig
+    make menuconfig
     
     # Disable problematic applets for AlmaLinux 9
     sed -i 's/CONFIG_TC=y/CONFIG_TC=n/' .config
     
     echo "🛠️ Compiling BusyBox..."
     make -j$(nproc)
-    make install CONFIG_PREFIX="$ISODIR"
+    make CONFIG_PREFIX="$ISODIR" install
 }
 
 # Function to create initrd directory structure
