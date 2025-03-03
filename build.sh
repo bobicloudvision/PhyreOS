@@ -280,7 +280,7 @@ extract_apt_packages() {
         
         file_count=$(find "$extract_dir" -type f | wc -l)
         echo "$extract_dir contains $file_count files"
-        [ $file_count -eq 0 ] && echo "⚠️ Warning: No files extracted in $extract_dir"
+#        [ $file_count -eq 0 ] && echo "⚠️ Warning: No files extracted in $extract_dir"
     done
 }
 
