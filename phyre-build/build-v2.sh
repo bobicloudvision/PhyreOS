@@ -534,6 +534,9 @@ fi
 # Wait for devices to settle
 sleep 2
 
+# Set UUID or detect root partition dynamically
+uuid=$(blkid -s UUID -o value /dev/sda1)
+
 # Try to mount root filesystem by UUID
 echo "Mounting root filesystem..."
 mkdir -p /mnt/root
@@ -541,8 +544,8 @@ mount -t ext4 /dev/disk/by-uuid/$uuid /mnt/root || {
   # If UUID mount fails, try to find the root device
   echo "UUID mount failed, trying to find root device..."
   for dev in sda1 sdb1 sdc1 vda1 hda1; do
-    if mount -t ext4 /dev/\$dev /mnt/root 2>/dev/null; then
-      echo "Mounted /dev/\$dev as root"
+    if mount -t ext4 /dev/$dev /mnt/root 2>/dev/null; then
+      echo "Mounted /dev/$dev as root"
       break
     fi
   done
@@ -562,6 +565,7 @@ mount --move /dev /mnt/root/dev
 # Switch to the new root
 echo "Switching to new root..."
 exec switch_root /mnt/root /sbin/init || exec sh
+
 EOF
 
 #=======================================================================
@@ -666,6 +670,7 @@ else
   "
 fi
 EOF
+
 
 #=======================================================================
 # STARTUP SCRIPTS
