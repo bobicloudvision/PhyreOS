@@ -4,9 +4,6 @@ set -e
 
 CURRENT_DIR=$(pwd)
 
-# Load configuration file
-source $CURRENT_DIR/config.sh
-
 # Function to install dependencies based on distribution
 install_dependencies() {
     echo "📦 Installing dependencies..."
@@ -26,6 +23,9 @@ install_dependencies() {
         exit 1
     fi
 }
+
+# Load configuration file
+source $CURRENT_DIR/config.sh || { echo "❌ Failed to load configuration file!"; exit 1; }
 
 # Function to prepare working directories
 prepare_directories() {
@@ -626,9 +626,9 @@ generate_iso() {
 
 # Main execution flow
 main() {
-#    install_dependencies
-#    prepare_directories
-#    build_kernel
+    install_dependencies
+    prepare_directories
+    build_kernel
     build_busybox
     create_initrd_structure
     download_apt_packages
