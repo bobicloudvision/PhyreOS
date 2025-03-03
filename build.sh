@@ -99,6 +99,7 @@ build_busybox() {
     sed 's/^CONFIG_MAN=y/CONFIG_MAN=n/' -i .config
     echo "CONFIG_STATIC_LIBGCC=y" >> .config
     echo "CONFIG_FEATURE_APPLET_NAME=n" >> .config
+    echo "CONFIG_MAN=n" >> .config
 
     export CFLAGS="$CFLAGS -Wno-unused-result"
     export CFLAGS="$CFLAGS -Wno-format-overflow"
