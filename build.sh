@@ -17,6 +17,10 @@ install_dependencies() {
             libncurses-dev xz-utils jq wget cpio xorriso grub-pc-bin grub-common gettext-base \
             perl-doc
         sudo apt install grub2-common grub-pc-bin -y
+        sudo apt install -y ca-certificates \
+              libelf-dev chrpath gawk\
+              texinfo libsdl1.2-dev whiptail diffstat
+
     else
         echo "⚠️ Unsupported distribution!"
         exit 1
