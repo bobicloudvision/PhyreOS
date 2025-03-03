@@ -100,6 +100,7 @@ build_busybox() {
     export CFLAGS="$CFLAGS -Wno-unused-result"
     export CFLAGS="$CFLAGS -Wno-format-overflow"
     export CFLAGS="$CFLAGS -Wno-uninitialized"
+    export CFLAGS="$CFLAGS -Wno-maybe-uninitialized"
 
     echo "🛠️ Compiling BusyBox..."
     make clean
