@@ -439,6 +439,205 @@ create_grub_config() {
     fi
 }
 
+# Function to create rootfs
+create_rootfs() {
+    echo "🌱 Creating root filesystem..."
+    
+    # Create rootfs directory structure
+    mkdir -p "$WORKDIR/rootfs"
+    mkdir -p "$WORKDIR/rootfs/bin"
+    mkdir -p "$WORKDIR/rootfs/sbin"
+    mkdir -p "$WORKDIR/rootfs/etc"
+    mkdir -p "$WORKDIR/rootfs/etc/apt"
+    mkdir -p "$WORKDIR/rootfs/etc/apt/sources.list.d"
+    mkdir -p "$WORKDIR/rootfs/dev"
+    mkdir -p "$WORKDIR/rootfs/proc"
+    mkdir -p "$WORKDIR/rootfs/sys"
+    mkdir -p "$WORKDIR/rootfs/tmp"
+    mkdir -p "$WORKDIR/rootfs/usr/bin"
+    mkdir -p "$WORKDIR/rootfs/usr/sbin"
+    mkdir -p "$WORKDIR/rootfs/usr/lib"
+    mkdir -p "$WORKDIR/rootfs/var/lib/apt/lists"
+    mkdir -p "$WORKDIR/rootfs/var/cache/apt/archives"
+    mkdir -p "$WORKDIR/rootfs/lib"
+    mkdir -p "$WORKDIR/rootfs/lib64"
+    mkdir -p "$WORKDIR/rootfs/home"
+    mkdir -p "$WORKDIR/rootfs/root"
+    mkdir -p "$WORKDIR/rootfs/mnt"
+    mkdir -p "$WORKDIR/rootfs/opt"
+    
+    # Copy BusyBox to rootfs
+    echo "📦 Copying BusyBox to rootfs..."
+    if [ -f "$ISODIR/bin/busybox" ]; then
+        cp "$ISODIR/bin/busybox" "$WORKDIR/rootfs/bin/"
+        chmod 755 "$WORKDIR/rootfs/bin/busybox"
+        
+        # Create BusyBox symlinks
+        echo "🔗 Creating BusyBox symlinks..."
+        cd "$WORKDIR/rootfs/bin"
+        for cmd in $(./busybox --list); do
+            ln -sf busybox "$cmd" 2>/dev/null || true
+        done
+        
+        # Create symlinks in /sbin and /usr/bin as well
+        cd "$WORKDIR/rootfs/sbin"
+        for cmd in $(../bin/busybox --list-full | grep sbin); do
+            ln -sf ../bin/busybox "${cmd##*/}" 2>/dev/null || true
+        done
+        
+        cd "$WORKDIR/rootfs/usr/bin"
+        for cmd in $(../../bin/busybox --list-full | grep usr/bin); do
+            ln -sf ../../bin/busybox "${cmd##*/}" 2>/dev/null || true
+        done
+    else
+        echo "⚠️ BusyBox binary not found in $ISODIR/bin/"
+    fi
+    
+    # Copy APT and libraries to rootfs
+    echo "📦 Copying APT to rootfs..."
+    cp -a "$WORKDIR/initrd/usr/bin/apt"* "$WORKDIR/rootfs/usr/bin/" 2>/dev/null || true
+    cp -a "$WORKDIR/initrd/usr/lib/apt" "$WORKDIR/rootfs/usr/lib/" 2>/dev/null || true
+    cp -a "$WORKDIR/initrd/usr/lib/x86_64-linux-gnu" "$WORKDIR/rootfs/usr/lib/" 2>/dev/null || true
+    cp -a "$WORKDIR/initrd/lib/"* "$WORKDIR/rootfs/lib/" 2>/dev/null || true
+    cp -a "$WORKDIR/initrd/lib64/"* "$WORKDIR/rootfs/lib64/" 2>/dev/null || true
+    
+    # Set up APT configuration
+    echo "⚙️ Setting up APT configuration..."
+    cat > "$WORKDIR/rootfs/etc/apt/sources.list" << EOF
+# PhyreOS custom repository
+deb [trusted=yes] http://phyreos.repo/packages stable main
+EOF
+
+    # Set up APT preferences
+    cat > "$WORKDIR/rootfs/etc/apt/preferences" << EOF
+Package: *
+Pin: origin phyreos.repo
+Pin-Priority: 900
+EOF
+
+    # Create basic configuration files
+    echo "⚙️ Creating basic configuration files..."
+    
+    # /etc/fstab
+    cat > "$WORKDIR/rootfs/etc/fstab" << EOF
+# /etc/fstab: static file system information
+proc            /proc           proc    defaults        0       0
+sysfs           /sys            sysfs   defaults        0       0
+devtmpfs        /dev            devtmpfs defaults      0       0
+tmpfs           /tmp            tmpfs   defaults        0       0
+EOF
+
+    # /etc/hostname
+    echo "phyreos" > "$WORKDIR/rootfs/etc/hostname"
+    
+    # /etc/hosts
+    cat > "$WORKDIR/rootfs/etc/hosts" << EOF
+127.0.0.1   localhost
+127.0.1.1   phyreos
+
+# The following lines are desirable for IPv6 capable hosts
+::1         localhost ip6-localhost ip6-loopback
+ff02::1     ip6-allnodes
+ff02::2     ip6-allrouters
+EOF
+
+    # /etc/passwd
+    cat > "$WORKDIR/rootfs/etc/passwd" << EOF
+root:x:0:0:root:/root:/bin/sh
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+EOF
+
+    # /etc/group
+    cat > "$WORKDIR/rootfs/etc/group" << EOF
+root:x:0:
+daemon:x:1:
+bin:x:2:
+sys:x:3:
+adm:x:4:
+tty:x:5:
+disk:x:6:
+lp:x:7:
+mail:x:8:
+news:x:9:
+uucp:x:10:
+man:x:12:
+proxy:x:13:
+kmem:x:15:
+dialout:x:20:
+fax:x:21:
+voice:x:22:
+cdrom:x:24:
+floppy:x:25:
+tape:x:26:
+sudo:x:27:
+audio:x:29:
+dip:x:30:
+www-data:x:33:
+backup:x:34:
+operator:x:37:
+list:x:38:
+irc:x:39:
+src:x:40:
+gnats:x:41:
+shadow:x:42:
+utmp:x:43:
+video:x:44:
+sasl:x:45:
+plugdev:x:46:
+staff:x:50:
+games:x:60:
+users:x:100:
+nogroup:x:65534:
+EOF
+
+    # /etc/shadow with locked root password
+    cat > "$WORKDIR/rootfs/etc/shadow" << EOF
+root:*:19000:0:99999:7:::
+daemon:*:19000:0:99999:7:::
+bin:*:19000:0:99999:7:::
+sys:*:19000:0:99999:7:::
+sync:*:19000:0:99999:7:::
+nobody:*:19000:0:99999:7:::
+EOF
+
+    # Create a simple init script for the rootfs
+    cat > "$WORKDIR/rootfs/sbin/init" << EOF
+#!/bin/sh
+
+# Mount essential filesystems
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t devtmpfs none /dev
+
+# Set hostname
+hostname \$(cat /etc/hostname)
+
+# Start system initialization
+echo "PhyreOS starting..."
+
+# Start a login shell
+exec /bin/sh
+EOF
+    chmod 755 "$WORKDIR/rootfs/sbin/init"
+    
+    # Create rootfs archive
+    echo "📦 Creating rootfs archive..."
+    cd "$WORKDIR"
+    tar -czf "$ISODIR/boot/rootfs.tar.gz" -C "$WORKDIR/rootfs" .
+    
+    # Verify rootfs archive was created
+    if [ ! -f "$ISODIR/boot/rootfs.tar.gz" ]; then
+        echo "❌ Failed to create rootfs archive!"
+        exit 1
+    else
+        echo "✅ Rootfs archive created successfully: $(du -h "$ISODIR/boot/rootfs.tar.gz" | cut -f1)"
+    fi
+}
+
 # Function to generate ISO image
 generate_iso() {
     echo "📀 Generating ISO image: $ISO_NAME..."
@@ -459,6 +658,7 @@ main() {
     copy_apt_to_initrd
     setup_repository
     create_initrd_image
+    create_rootfs
     create_grub_config
     generate_iso
 }

@@ -8,6 +8,7 @@ PhyreOS is a minimal Linux distribution with APT package management.
 - Uses BusyBox for basic utilities
 - Includes APT package manager
 - Custom package repository
+- Supports both initrd-only and rootfs boot options
 
 ## Building
 
@@ -60,3 +61,13 @@ apt-get install <package_name>
 # Search for packages
 apt-cache search <keyword>
 ```
+
+## Boot Options
+
+PhyreOS provides two boot options:
+
+1. **initrd boot** - A minimal boot environment that loads entirely into RAM. This is lightweight but doesn't persist changes between reboots.
+
+2. **rootfs boot** - A more complete root filesystem that provides a more traditional Linux environment. This option extracts a rootfs archive to a tmpfs filesystem, providing more space and a more complete system structure.
+
+To select a boot option, use the GRUB menu at startup.
