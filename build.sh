@@ -20,6 +20,10 @@ install_dependencies() {
         sudo apt install -y ca-certificates \
               libelf-dev chrpath gawk\
               texinfo libsdl1.2-dev whiptail diffstat
+        echo "deb http://security.ubuntu.com/ubuntu focal-security main universe" | sudo tee -a /etc/apt/sources.list
+        sudo apt-get install -y libncurses-dev libncurses6 libncursesw6 libncursesada-dev libncursesada6.2.4
+        sudo apt install iproute2 -y
+        sudo apt install linux-headers-$(uname -r) -y
 
     else
         echo "⚠️ Unsupported distribution!"
@@ -91,6 +95,9 @@ build_busybox() {
     sed 's/^.*CONFIG_STATIC.*$/CONFIG_STATIC=y/' -i .config
     sed 's/^CONFIG_MAN=y/CONFIG_MAN=n/' -i .config
     echo "CONFIG_STATIC_LIBGCC=y" >> .config
+
+    export CFLAGS="$CFLAGS -Wno-unused-result"
+    export CFLAGS="$CFLAGS -Wno-format-overflow"
 
     echo "🛠️ Compiling BusyBox..."
     make clean
