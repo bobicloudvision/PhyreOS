@@ -1,21 +1,21 @@
 #!/bin/sh
 # ---------------------------------------
-# Yosild - Your simple Linux distro
+# MyOS - Now linux is easy
   version="3.2.1"
-# (c) Jaromaz https://jm.iq.pl
-# Yosild is licensed under
+# (c) Bozhidar Slaveykov https://cloudvision.bg
+# MyOS is licensed under
 # GNU General Public License v3.0
 # ---------------------------------------
 
 # ----- Config --------------------------
 device="sdc"
-distro_name="Yosild"
-distro_desc="Your simple Linux distro"
+distro_name="MyOS"
+distro_desc="Now linux is easy"
 distro_codename="chinchilla"
 telnetd_enabled="true"
 hyperv_support="false"
 build_iso="true"
-iso_filename="yosild.iso"
+iso_filename="my-os.iso"
 kernel="https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.16.19.tar.xz"
 busybox="https://busybox.net/downloads/busybox-1.34.1.tar.bz2"
 # ---------------------------------------
