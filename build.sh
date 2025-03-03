@@ -12,9 +12,10 @@ install_dependencies() {
     echo "📦 Installing dependencies..."
     if [ -f /etc/redhat-release ]; then
         sudo dnf groupinstall -y "Development Tools"
-        sudo dnf install -y gcc make flex bison openssl-devel bc elfutils-libelf-devel \
+        sudo dnf install -y gcc make flex bison openssl-devel bc elfutils-libelf-devel  \
             ncurses-devel xz jq wget cpio xorriso grub2-tools-extra gettext \
             perl-Pod-Html
+        sudo dnf install -y glibc-devel glibc-static
     elif [ -f /etc/debian_version ]; then
         sudo apt update
         sudo apt install -y build-essential flex bison libssl-dev bc libelf-dev \
