@@ -52,6 +52,14 @@ build_kernel() {
     make -j$(nproc)
 
     cp $WORKDIR/src/linux-*/arch/x86/boot/bzImage $ISODIR/boot/vmlinuz
+
+    # Verify kernel image was created
+    if [ ! -f "$ISODIR/boot/vmlinuz" ]; then
+        echo "❌ Failed to create kernel image!"
+        exit 1
+    else
+        echo "✅ Kernel image created successfully: $(du -h "$ISODIR/boot/vmlinuz" | cut -f1)"
+    fi
 }
 
 # Function to build BusyBox
@@ -441,10 +449,10 @@ generate_iso() {
 
 # Main execution flow
 main() {
-#    install_dependencies
-#    prepare_directories
-#    build_kernel
-#    build_busybox
+    install_dependencies
+    prepare_directories
+    build_kernel
+    build_busybox
     create_initrd_structure
     download_apt_packages
     extract_apt_packages
