@@ -78,22 +78,23 @@ build_busybox() {
     echo "🛠️ Configuring BusyBox..."
     make distclean
     make defconfig
-    
-    # Disable problematic applets for AlmaLinux 9
-    sed -i 's/CONFIG_TC=y/CONFIG_TC=n/' .config
-
-    sed -i 's/CONFIG_INSTALL_APPLET_SYMLINKS=y/CONFIG_INSTALL_APPLET_SYMLINKS=n/' .config  # Disable symlinking applets
-    sed -i 's/CONFIG_FEATURE_INSTALLER=y/CONFIG_FEATURE_INSTALLER=n/' .config  # Disable symlinking feature
-    sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config  # Enable static binary
-    sed -i 's/CONFIG_STATIC_LIBGCC=n/CONFIG_STATIC_LIBGCC=Y/' .config
 
     LDFLAGS="-L/usr/lib64" make
     LDFLAGS="-L/usr/lib/musl" make
+
+    # Disable problematic applets for AlmaLinux 9
+    export CONFIG_TC=n
+
     export CONFIG_EXTRA_LDLIBS="-lm -lresolv"
+    export CONFIG_INSTALL_APPLET_SYMLINKS=n
+    export CONFIG_FEATURE_INSTALLER=n
+    export CONFIG_STATIC=y
+    export CONFIG_STATIC_LIBGCC=y
+    export CONFIG_PREFIX="$ISODIR"
     
     echo "🛠️ Compiling BusyBox..."
     make -j$(nproc)
-    make -s CONFIG_PREFIX="$ISODIR" install
+    make -s install
 }
 
 # Function to create initrd directory structure
