@@ -31,15 +31,17 @@ install_dependencies() {
     fi
 }
 
-# Load configuration file
-CURRENT_DIR=$(pwd)
-source $CURRENT_DIR/config.sh || { echo "❌ Failed to load configuration file!"; exit 1; }
+load_config() {
+  # Load configuration file
+  CURRENT_DIR=$(pwd)
+  source $CURRENT_DIR/config.sh || { echo "❌ Failed to load configuration file!"; exit 1; }
 
-# check if the KERNEL_VERSION is set
-if [ -z "$KERNEL_VERSION" ]; then
-    echo "❌ KERNEL_VERSION is not set in config.sh!"
-    exit 1
-fi
+  # check if the KERNEL_VERSION is set
+  if [ -z "$KERNEL_VERSION" ]; then
+      echo "❌ KERNEL_VERSION is not set in config.sh!"
+      exit 1
+  fi
+}
 
 # Function to prepare working directories
 prepare_directories() {
@@ -643,9 +645,10 @@ generate_iso() {
 
 # Main execution flow
 main() {
-#    install_dependencies
-#    prepare_directories
-#    build_kernel
+    install_dependencies
+    load_config
+    prepare_directories
+    build_kernel
     build_busybox
     create_initrd_structure
     download_apt_packages
