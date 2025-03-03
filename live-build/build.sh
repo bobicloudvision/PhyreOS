@@ -9,7 +9,7 @@ BUILD_DIR=~/my-advanced-live-image
 # Step 1: Install necessary dependencies
 echo "Installing live-build and required dependencies..."
 sudo apt update
-sudo apt install -y live-build live-boot live-config debootstrap coreutils
+sudo apt install -y live-build live-boot live-config debootstrap coreutils bash
 
 # Step 2: Set up the build environment
 echo "Setting up live-build environment..."
@@ -46,7 +46,7 @@ echo "Welcome to my custom Debian live image!" > config/includes.chroot/etc/motd
 # Step 7: Add custom desktop background (replace with your own image)
 echo "Adding custom desktop background..."
 mkdir -p config/includes.chroot/usr/share/backgrounds/
-cp ~/my-background.jpg config/includes.chroot/usr/share/backgrounds/
+#cp ~/my-background.jpg config/includes.chroot/usr/share/backgrounds/
 
 # Step 8: Configure static IP (optional, modify as needed)
 echo "Configuring static IP..."
@@ -69,14 +69,23 @@ echo "/dev/sda1  /  ext4  defaults  0  1" > config/includes.chroot/etc/fstab
 
 # Step 12: Mount necessary filesystems for chroot (if not already mounted)
 echo "Mounting necessary filesystems for chroot..."
+mkdir -p $BUILD_DIR/chroot
+mkdir -p $BUILD_DIR/chroot/dev
+mkdir -p $BUILD_DIR/chroot/proc
+mkdir -p $BUILD_DIR/chroot/sys
+mkdir -p $BUILD_DIR/chroot/run
+mkdir -p $BUILD_DIR/chroot/dev/pts  # Mount /dev/pts for pseudo-terminal
+
+# Mount filesystems required for chroot
 sudo mount --bind /dev $BUILD_DIR/chroot/dev
 sudo mount --bind /proc $BUILD_DIR/chroot/proc
 sudo mount --bind /sys $BUILD_DIR/chroot/sys
 sudo mount --bind /run $BUILD_DIR/chroot/run
+sudo mount -t devpts devpts $BUILD_DIR/chroot/dev/pts  # Ensure /dev/pts is mounted
 
 # Step 13: Ensure necessary binaries (like 'env') are available in the chroot
-echo "Ensuring coreutils and env are available in the chroot..."
-sudo chroot $BUILD_DIR/chroot /bin/bash -c "apt-get update && apt-get install -y coreutils"
+echo "Ensuring coreutils and bash are available in the chroot..."
+sudo chroot $BUILD_DIR/chroot /bin/bash -c "apt-get update && apt-get install -y coreutils bash"
 
 # Step 14: Build the live image
 echo "Building the live image..."
@@ -84,6 +93,7 @@ sudo lb build
 
 # Step 15: Unmount filesystems after build is complete
 echo "Unmounting filesystems..."
+sudo umount $BUILD_DIR/chroot/dev/pts
 sudo umount $BUILD_DIR/chroot/dev
 sudo umount $BUILD_DIR/chroot/proc
 sudo umount $BUILD_DIR/chroot/sys
