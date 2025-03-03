@@ -16,7 +16,7 @@ install_dependencies() {
         sudo apt install -y build-essential flex bison libssl-dev bc libelf-dev \
             libncurses-dev xz-utils jq wget cpio xorriso grub-pc-bin grub-common gettext-base \
             perl-doc
-        sudo apt install grub2-common grub-pc-bin -y
+        sudo apt install grub2 grub2-common grub-pc-bin -y
         sudo apt install -y ca-certificates \
               libelf-dev chrpath gawk\
               texinfo libsdl1.2-dev whiptail diffstat
@@ -95,10 +95,10 @@ build_busybox() {
     make defconfig
 
 
-#    sed 's/^.*CONFIG_STATIC.*$/CONFIG_STATIC=y/' -i .config
-#    sed 's/^CONFIG_MAN=y/CONFIG_MAN=n/' -i .config
-#    echo "CONFIG_STATIC_LIBGCC=y" >> .config
-#    echo "CONFIG_FEATURE_APPLET_NAME=n" >> .config
+    sed 's/^.*CONFIG_STATIC.*$/CONFIG_STATIC=y/' -i .config
+    sed 's/^CONFIG_MAN=y/CONFIG_MAN=n/' -i .config
+    echo "CONFIG_STATIC_LIBGCC=y" >> .config
+    echo "CONFIG_FEATURE_APPLET_NAME=n" >> .config
 
     export CFLAGS="$CFLAGS -Wno-unused-result"
     export CFLAGS="$CFLAGS -Wno-format-overflow"
@@ -645,10 +645,10 @@ generate_iso() {
 
 # Main execution flow
 main() {
-    install_dependencies
+#    install_dependencies
     load_config
-    prepare_directories
-    build_kernel
+#    prepare_directories
+#    build_kernel
     build_busybox
     create_initrd_structure
     download_apt_packages
