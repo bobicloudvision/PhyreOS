@@ -95,14 +95,15 @@ build_busybox() {
     sed 's/^.*CONFIG_STATIC.*$/CONFIG_STATIC=y/' -i .config
     sed 's/^CONFIG_MAN=y/CONFIG_MAN=n/' -i .config
     echo "CONFIG_STATIC_LIBGCC=y" >> .config
+    echo "CONFIG_FEATURE_APPLET_NAME=n" >> .config
 
     export CFLAGS="$CFLAGS -Wno-unused-result"
     export CFLAGS="$CFLAGS -Wno-format-overflow"
 
     echo "🛠️ Compiling BusyBox..."
     make clean
-    make -j$(nproc)
-    make -s CONFIG_PREFIX="$ISODIR" install
+    make -j$(nproc) -k
+    make -s CONFIG_PREFIX="$ISODIR" install -k
 }
 
 # Function to create initrd directory structure
