@@ -15,18 +15,11 @@ CURRENT_DIR=$(pwd)
 cd poky
 source oe-init-build-env
 
-# Create a proper place for your custom recipe
-mkdir -p meta-custom/recipes-core/images
-cp $CURRENT_DIR/desktop-image.bb meta-custom/recipes-core/images/
-#
-# Create layer configuration
-mkdir -p meta-custom/conf
-cp $CURRENT_DIR/bblayers.conf meta-custom/conf/layer.conf
-
-# Add your custom layer to the build
-bitbake-layers add-layer meta-custom
+#bitbake-layers create-layer phyre-os
+#bitbake-layers add-layer phyre-os
+#bitbake-layers show-layers
 
 # Now build your custom image
-bitbake desktop-image
+bitbake core-image-minimal
 
 echo "Done"
