@@ -20,7 +20,7 @@ install_dependencies() {
         sudo apt install -y ca-certificates \
               libelf-dev chrpath gawk\
               texinfo libsdl1.2-dev whiptail diffstat
-        sudo apt-get install -y gcc build-essential libncurses5-dev libpam0g-dev libsepol1-dev libselinux1-dev
+        sudo apt-get install -y gcc build-essential libncurses5-dev libpam0g-dev libsepol-dev libselinux1-dev
         sudo apt install iproute2 -y
         sudo apt install linux-headers-$(uname -r) -y
         sudo apt install bzip2 git vim make gcc libncurses-dev flex bison bc cpio libelf-dev libssl-dev syslinux dosfstools nano git -y
