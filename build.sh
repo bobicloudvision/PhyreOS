@@ -16,6 +16,7 @@ install_dependencies() {
         sudo apt install -y build-essential flex bison libssl-dev bc libelf-dev \
             libncurses-dev xz-utils jq wget cpio xorriso grub-pc-bin grub-common gettext-base \
             perl-doc
+        sudo apt install grub2-common grub-pc-bin -y
     else
         echo "⚠️ Unsupported distribution!"
         exit 1
@@ -83,18 +84,14 @@ build_busybox() {
     echo "🛠️ Configuring BusyBox..."
     make defconfig
 
-   # Disable problematic applets for AlmaLinux 9
-    sed -i 's/CONFIG_TC=y/CONFIG_TC=n/' .config
-    sed -i 's/CONFIG_FEATURE_INSTALLER=y/CONFIG_FEATURE_INSTALLER=n/' .config
-    sed -i 's/CONFIG_INSTALL_APPLET_SYMLINKS=y/CONFIG_INSTALL_APPLET_SYMLINKS=n/' .config
-
-    sed -i 's/CONFIG_STATIC_LIBGCC=n/CONFIG_STATIC_LIBGCC=y/' .config
-    sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
+    sed 's/^.*CONFIG_STATIC.*$/CONFIG_STATIC=y/' -i .config
+    sed 's/^CONFIG_MAN=y/CONFIG_MAN=n/' -i .config
+    echo "CONFIG_STATIC_LIBGCC=y" >> .config
 
     echo "🛠️ Compiling BusyBox..."
     make clean
     make -j$(nproc)
-    make -s CONFIG_PREFIX="$ISODIR" CONFIG_FEATURE_TC=n install
+    make -s CONFIG_PREFIX="$ISODIR" install
 }
 
 # Function to create initrd directory structure
