@@ -20,10 +20,10 @@ install_dependencies() {
         sudo apt install -y ca-certificates \
               libelf-dev chrpath gawk\
               texinfo libsdl1.2-dev whiptail diffstat
-        echo "deb http://security.ubuntu.com/ubuntu focal-security main universe" | sudo tee -a /etc/apt/sources.list
-        sudo apt-get install -y libncurses-dev libncurses6 libncursesw6 libncursesada-dev libncursesada6.2.4
+        sudo apt-get install -y gcc build-essential libncurses5-dev libpam0g-dev libsepol1-dev libselinux1-dev
         sudo apt install iproute2 -y
         sudo apt install linux-headers-$(uname -r) -y
+        sudo apt install bzip2 git vim make gcc libncurses-dev flex bison bc cpio libelf-dev libssl-dev syslinux dosfstools nano git -y
 
     else
         echo "⚠️ Unsupported distribution!"
