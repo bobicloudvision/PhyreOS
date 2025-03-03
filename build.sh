@@ -83,14 +83,9 @@ build_busybox() {
     echo "🛠️ Configuring BusyBox..."
     make defconfig
 
-    LDFLAGS="-L/usr/lib64" make
-    LDFLAGS="-L/usr/lib/musl" make
-
    # Disable problematic applets for AlmaLinux 9
     sed -i 's/CONFIG_TC=y/CONFIG_TC=n/' .config
 
-    export CONFIG_EXTRA_LDLIBS="-lm -lresolv"
-    
     echo "🛠️ Compiling BusyBox..."
     make clean
     make -j$(nproc)
@@ -631,9 +626,9 @@ generate_iso() {
 
 # Main execution flow
 main() {
-    install_dependencies
-    prepare_directories
-    build_kernel
+#    install_dependencies
+#    prepare_directories
+#    build_kernel
     build_busybox
     create_initrd_structure
     download_apt_packages
