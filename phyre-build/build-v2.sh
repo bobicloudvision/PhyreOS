@@ -62,7 +62,7 @@ fi
 [ -d ./files ] || mkdir files
 
 # Check if GNU utilities are already compiled
-answer="n"
+answer="y"
 if [ -f files/coreutils/src/ls ] && [ -f files/bash/bash ]; then
   printf "** Do you want to use previously compiled GNU utilities? (y/n): "
   read answer
