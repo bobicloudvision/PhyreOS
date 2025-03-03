@@ -2,8 +2,6 @@
 
 set -e
 
-CURRENT_DIR=$(pwd)
-
 # Function to install dependencies based on distribution
 install_dependencies() {
     echo "📦 Installing dependencies..."
@@ -25,7 +23,14 @@ install_dependencies() {
 }
 
 # Load configuration file
+CURRENT_DIR=$(pwd)
 source $CURRENT_DIR/config.sh || { echo "❌ Failed to load configuration file!"; exit 1; }
+
+# check if the KERNEL_VERSION is set
+if [ -z "$KERNEL_VERSION" ]; then
+    echo "❌ KERNEL_VERSION is not set in config.sh!"
+    exit 1
+fi
 
 # Function to prepare working directories
 prepare_directories() {
