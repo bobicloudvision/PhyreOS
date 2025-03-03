@@ -289,109 +289,6 @@ install_busybox() {
   echo "** BusyBox installation completed"
 }
 
-# Partition and format disk
-partition_disk() {
-  # Skip in ISO-only mode
-  if [ "$iso_only" = "true" ]; then
-    echo "** ISO-only mode: skipping disk partitioning"
-    return 0
-  fi
-  
-  section_header "Partitioning /dev/$device"
-  
-  # Check if device exists
-  if [ ! -b "/dev/$device" ]; then
-    error_exit "Device /dev/$device does not exist or is not a block device"
-  fi
-  
-  echo "** Device /dev/$device exists, proceeding with partitioning"
-  sleep 2
-  
-  # Determine if we're working with a loop device
-  is_loop=0
-  if echo "$device" | grep -q "loop"; then
-    is_loop=1
-    echo "** Working with loop device /dev/$device"
-  fi
-  
-  # Clear any existing partition table (with verbose output)
-  echo "** Wiping partition table on /dev/$device"
-  wipefs -af /dev/$device || error_exit "Failed to wipe partition table (wipefs command failed)"
-
-  # Create a new partition (with verbose output)
-  echo "** Creating new partition on /dev/$device"
-  
-  # Use different partitioning approach for loop devices vs. physical disks
-  if [ $is_loop -eq 1 ]; then
-    # For loop devices, create a single partition using the entire device
-    echo "** Using entire loop device for a single partition"
-    echo -e "o\nn\np\n1\n\n\nw" | fdisk /dev/$device || \
-      error_exit "Failed to create partition on loop device (fdisk command failed)"
-  else
-    # For physical disks, use the original approach
-    printf "n\np\n${part}\n2048\n\nw\n" | \
-      ./files/busybox/busybox fdisk /dev/$device || \
-      error_exit "Failed to create partition (fdisk command failed)"
-  fi
-
-  # Wait a moment for the kernel to recognize the new partition
-  echo "** Waiting for the system to recognize the new partition"
-  sleep 5
-  
-  # For loop devices, we may need to refresh the partition table
-  if [ $is_loop -eq 1 ]; then
-    echo "** Refreshing partition table for loop device"
-    partprobe /dev/$device || echo "Warning: partprobe command failed, continuing anyway"
-    sleep 2
-  fi
-  
-  # Check if the partition was created
-  if [ ! -b "/dev/${device}${part}" ] && [ ! -b "/dev/${device}p${part}" ]; then
-    echo "** Trying alternative partition naming schemes..."
-    
-    # Try different partition naming schemes
-    if [ -b "/dev/${device}p${part}" ]; then
-      echo "** Found partition at /dev/${device}p${part}"
-      device_part="${device}p${part}"
-    elif [ -b "/dev/${device}${part}" ]; then
-      echo "** Found partition at /dev/${device}${part}"
-      device_part="${device}${part}"
-    else
-      # List all partitions to help diagnose the issue
-      echo "** Available partitions:"
-      ls -l /dev/${device}* || echo "No partitions found"
-      error_exit "Partition for /dev/$device was not found"
-    fi
-  else
-    # Determine the correct partition device name
-    if [ -b "/dev/${device}p${part}" ]; then
-      device_part="${device}p${part}"
-    else
-      device_part="${device}${part}"
-    fi
-  fi
-  
-  echo "** Using partition: /dev/$device_part"
-  
-  # Format the partition with ext4
-  echo "** Formatting partition /dev/$device_part with ext4"
-  echo y | mkfs.ext4 /dev/$device_part || error_exit "Failed to format partition"
-
-  # Get the UUID of the new partition
-  echo "** Getting UUID of partition /dev/$device_part"
-  uuid=$(blkid /dev/$device_part -sUUID -ovalue) || error_exit "Failed to get UUID"
-  echo "** Partition UUID: $uuid"
-
-  # Mount the new partition and create boot directory
-  echo "** Mounting partition to /mnt"
-  mount /dev/$device_part /mnt || error_exit "Failed to mount partition"
-  mkdir /mnt/boot || error_exit "Failed to create boot directory"
-
-  # Generate hostname from distribution name (lowercase, first word)
-  host=$(printf $(printf $distro_name | tr A-Z a-z) | cut -d" " -f 1)
-  echo "** Generated hostname: $host"
-}
-
 # Compile Linux kernel
 compile_kernel() {
   section_header "Compilation of the kernel"
@@ -453,33 +350,6 @@ EOF
   fi
 }
 
-# Install GRUB bootloader
-install_grub() {
-  # Skip in ISO-only mode
-  if [ "$iso_only" = "true" ]; then
-    echo "** ISO-only mode: skipping GRUB installation"
-    return 0
-  fi
-  
-  section_header "Installation of GRUB"
-  
-  echo "** Installing GRUB to /dev/$device"
-  grub-install --root-directory=/mnt /dev/$device || error_exit "Failed to install GRUB"
-
-  # Create GRUB configuration
-  echo "** Creating GRUB configuration"
-  cat > /mnt/boot/grub/grub.cfg << EOF || error_exit "Failed to create GRUB configuration"
-timeout=3
-menuentry '$distro_name - $distro_desc' {
-  linux /boot/$kernel_file quiet rootdelay=130
-  initrd /boot/$initrd_file
-  root=PARTUUID=$uuid
-  boot
-  echo Loading Linux
-}
-EOF
-  echo "** GRUB installation completed"
-}
 
 # Create root filesystem structure
 create_rootfs() {
@@ -510,6 +380,7 @@ create_rootfs() {
 
   # Install BusyBox and set up directories with proper permissions
   echo "** Installing BusyBox"
+  BUSSYBOX_PATH=$(find ../files/busybox/ -name busybox)
   cp ../files/busybox/busybox bin || error_exit "Failed to copy BusyBox"
   install -d -m 0750 root
   install -d -m 1777 tmp
@@ -1126,18 +997,9 @@ main() {
   check_prerequisites
   install_busybox
   
-  # Skip disk operations in ISO-only mode
-  if [ "$iso_only" != "true" ]; then
-    partition_disk
-  fi
   
   compile_kernel
-  
-  # Skip GRUB installation in ISO-only mode
-  if [ "$iso_only" != "true" ]; then
-    install_grub
-  fi
-  
+
   create_rootfs
   configure_system
   create_init_script
@@ -1149,17 +1011,9 @@ main() {
   set_permissions
   build_initramfs
   
-  # Build ISO if enabled
-  if [ "$build_iso" = "true" ]; then
-    build_iso_image
-  fi
+ build_iso_image
   
-  # Display completion message
-  if [ "$iso_only" = "true" ]; then
-    section_header "$distro_name ISO image created successfully"
-  else
-    section_header "$distro_name build completed successfully"
-  fi
+  section_header "$distro_name ISO image created successfully"
 }
 
 # Run main function with all arguments
