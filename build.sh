@@ -97,6 +97,11 @@ build_busybox() {
 #    echo "CONFIG_STATIC_LIBGCC=y" >> .config
 #    echo "CONFIG_FEATURE_APPLET_NAME=n" >> .config
 
+    export CFLAGS="$CFLAGS -Wno-unused-result"
+    export CFLAGS="$CFLAGS -Wno-format-overflow"
+    export CFLAGS="$CFLAGS -Wno-uninitialized"
+    export CFLAGS="$CFLAGS -Wno-maybe-uninitialized"
+
     echo "🛠️ Compiling BusyBox..."
     make clean
     make -j$(nproc) -k
