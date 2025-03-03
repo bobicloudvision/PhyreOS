@@ -85,11 +85,16 @@ build_busybox() {
 
    # Disable problematic applets for AlmaLinux 9
     sed -i 's/CONFIG_TC=y/CONFIG_TC=n/' .config
+    sed -i 's/CONFIG_FEATURE_INSTALLER=y/CONFIG_FEATURE_INSTALLER=n/' .config
+    sed -i 's/CONFIG_INSTALL_APPLET_SYMLINKS=y/CONFIG_INSTALL_APPLET_SYMLINKS=n/' .config
+
+    sed -i 's/CONFIG_STATIC_LIBGCC=n/CONFIG_STATIC_LIBGCC=y/' .config
+    sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
 
     echo "🛠️ Compiling BusyBox..."
     make clean
     make -j$(nproc)
-    make -s CONFIG_PREFIX="$ISODIR" CONFIG_FEATURE_TC=n CONFIG_STATIC=y  CONFIG_STATIC_LIBGCC=y CONFIG_INSTALL_APPLET_SYMLINKS=n CONFIG_FEATURE_INSTALLER=n install
+    make -s CONFIG_PREFIX="$ISODIR" CONFIG_FEATURE_TC=n install
 }
 
 # Function to create initrd directory structure
