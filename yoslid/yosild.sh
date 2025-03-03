@@ -14,6 +14,8 @@ distro_desc="Your simple Linux distro"
 distro_codename="chinchilla"
 telnetd_enabled="true"
 hyperv_support="false"
+build_iso="true"
+iso_filename="yosild.iso"
 kernel="https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.16.19.tar.xz"
 busybox="https://busybox.net/downloads/busybox-1.34.1.tar.bz2"
 # ---------------------------------------
@@ -447,4 +449,44 @@ cd ..
 chmod 400 /mnt/boot/$initrd_file
 rm -r rootfs
 umount /mnt
+
+# ISO build functionality
+if [ "$build_iso" = "true" ]; then
+  echo "** Building ISO image"
+  
+  # Install required packages if not already installed
+  echo "** Installing required packages for ISO creation on Ubuntu 22"
+  apt update && apt install -y xorriso grub-common grub-pc-bin mtools \
+    libc6 libdevmapper1.02.1 liblzma5 dosfstools uuid-runtime
+  
+  # Create a temporary directory for ISO files
+  iso_dir=$(mktemp -d)
+  mkdir -p $iso_dir/boot/grub
+  
+  # Copy kernel and initramfs
+  cp /mnt/boot/$kernel_file $iso_dir/boot/
+  cp /mnt/boot/$initrd_file $iso_dir/boot/
+  
+  # Create GRUB configuration for ISO
+  cat > $iso_dir/boot/grub/grub.cfg << EOF
+set timeout=5
+set default=0
+
+menuentry "$distro_name - $distro_desc (Live)" {
+  linux /boot/$kernel_file quiet
+  initrd /boot/$initrd_file
+  boot
+}
+EOF
+  
+  # Create the ISO image
+  echo "** Creating ISO image: $iso_filename"
+  grub-mkrescue -o $iso_filename $iso_dir
+  
+  # Clean up
+  rm -rf $iso_dir
+  
+  echo "** ISO image created: $iso_filename"
+fi
+
 printf "\n** all done **\n\n"
