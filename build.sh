@@ -86,7 +86,7 @@ build_busybox() {
 }
 
 # Function to create initrd directory structure
-create_initrd_structure() {
+create_initrd_structure() { 
     echo "📦 Creating initrd structure..."
     mkdir -p "$WORKDIR/initrd"
     mkdir -p "$WORKDIR/initrd/etc/apt"
@@ -648,10 +648,10 @@ generate_iso() {
 
 # Main execution flow
 main() {
-    install_dependencies
-    prepare_directories
-    build_kernel
-    build_busybox
+#    install_dependencies
+#    prepare_directories
+#    build_kernel
+#    build_busybox
     create_initrd_structure
     download_apt_packages
     extract_apt_packages
