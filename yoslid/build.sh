@@ -103,7 +103,7 @@ part=1
 lba=2048
 
 # Clear any existing partition table
-wipefs -af /dev/$device > /dev/null 2>&1
+wipefs -af /dev/$device
 
 # Create a new partition
 echo "** Preparation of the system partition"
@@ -118,6 +118,7 @@ uuid=$(blkid /dev/${device}${part} -sUUID -ovalue)
 
 # Mount the new partition and create boot directory
 mount /dev/${device}${part} /mnt
+rm -rf /mnt/boot
 mkdir /mnt/boot
 
 # Generate hostname from distribution name (lowercase, first word)
