@@ -356,11 +356,53 @@ create_initrd_image() {
     echo "📦 Creating initrd image..."
     
     # Copy init script
+    echo "📋 Copying init script..."
     cp $CURRENT_DIR/init.sh "$WORKDIR/initrd/init"
-    chmod +x "$WORKDIR/initrd/init"
-
-    # Create the initrd image
-    ( cd "$WORKDIR/initrd" && find . | cpio -o --format=newc ) | gzip > "$ISODIR/boot/initrd.img"
+    
+    # Ensure init script has correct permissions
+    echo "🔒 Setting init script permissions..."
+    chmod 755 "$WORKDIR/initrd/init"
+    
+    # Verify init script exists and is executable
+    if [ ! -x "$WORKDIR/initrd/init" ]; then
+        echo "❌ Init script is not executable or doesn't exist!"
+        exit 1
+    else
+        echo "✅ Init script is ready"
+    fi
+    
+    # Add busybox to initrd if not already included
+    if [ ! -f "$WORKDIR/initrd/bin/busybox" ] && [ -f "$ISODIR/bin/busybox" ]; then
+        echo "📦 Copying BusyBox to initrd..."
+        mkdir -p "$WORKDIR/initrd/bin"
+        cp "$ISODIR/bin/busybox" "$WORKDIR/initrd/bin/"
+        chmod 755 "$WORKDIR/initrd/bin/busybox"
+    fi
+    
+    # Create essential directories
+    mkdir -p "$WORKDIR/initrd/dev"
+    mkdir -p "$WORKDIR/initrd/proc"
+    mkdir -p "$WORKDIR/initrd/sys"
+    mkdir -p "$WORKDIR/initrd/tmp"
+    mkdir -p "$WORKDIR/initrd/bin"
+    mkdir -p "$WORKDIR/initrd/sbin"
+    
+    # Create symlinks for sh if not already present
+    if [ ! -e "$WORKDIR/initrd/bin/sh" ]; then
+        echo "🔗 Creating symlink for /bin/sh..."
+        ln -sf busybox "$WORKDIR/initrd/bin/sh"
+    fi
+    
+    echo "📦 Creating initrd image..."
+    ( cd "$WORKDIR/initrd" && find . | cpio -H newc -o ) | gzip -9 > "$ISODIR/boot/initrd.img"
+    
+    # Verify initrd was created
+    if [ ! -f "$ISODIR/boot/initrd.img" ]; then
+        echo "❌ Failed to create initrd image!"
+        exit 1
+    else
+        echo "✅ Initrd image created successfully: $(du -h "$ISODIR/boot/initrd.img" | cut -f1)"
+    fi
 }
 
 # Function to create GRUB configuration
@@ -399,10 +441,10 @@ generate_iso() {
 
 # Main execution flow
 main() {
-    install_dependencies
-    prepare_directories
-    build_kernel
-    build_busybox
+#    install_dependencies
+#    prepare_directories
+#    build_kernel
+#    build_busybox
     create_initrd_structure
     download_apt_packages
     extract_apt_packages
