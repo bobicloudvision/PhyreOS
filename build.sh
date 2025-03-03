@@ -82,8 +82,13 @@ build_busybox() {
     LDFLAGS="-L/usr/lib64" make
     LDFLAGS="-L/usr/lib/musl" make
 
-    # Disable problematic applets for AlmaLinux 9
-    export CONFIG_TC=n
+   # Disable problematic applets for AlmaLinux 9
+    sed -i 's/CONFIG_TC=y/CONFIG_TC=n/' .config
+
+    sed -i 's/CONFIG_INSTALL_APPLET_SYMLINKS=y/CONFIG_INSTALL_APPLET_SYMLINKS=n/' .config  # Disable symlinking applets
+    sed -i 's/CONFIG_FEATURE_INSTALLER=y/CONFIG_FEATURE_INSTALLER=n/' .config  # Disable symlinking feature
+    sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config  # Enable static binary
+    sed -i 's/CONFIG_STATIC_LIBGCC=n/CONFIG_STATIC_LIBGCC=Y/' .config
 
     export CONFIG_EXTRA_LDLIBS="-lm -lresolv"
     export CONFIG_INSTALL_APPLET_SYMLINKS=n
