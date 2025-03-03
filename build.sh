@@ -48,8 +48,7 @@ build_kernel() {
     cd linux-*/
 
     echo "🛠️ Compiling kernel..."
-    make menuconfig
-#    make defconfig
+    make defconfig
     make -j$(nproc)
 
     cp $WORKDIR/src/linux-*/arch/x86/boot/bzImage $ISODIR/boot/vmlinuz
@@ -76,14 +75,22 @@ build_busybox() {
     cd busybox-${BUSYBOX_VERSION}
 
     echo "🛠️ Configuring BusyBox..."
-    make menuconfig
+    make defconfig
     
     # Disable problematic applets for AlmaLinux 9
     sed -i 's/CONFIG_TC=y/CONFIG_TC=n/' .config
+
+    sed -i 's/CONFIG_FEATURE_INSTALLER=y/CONFIG_FEATURE_INSTALLER=n/' .config  # Disable symlinking feature
+    sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config  # Enable static binary
+    sed -i 's/CONFIG_STATIC_LIBGCC=n/CONFIG_STATIC_LIBGCC=Y/' .config
+
+    LDFLAGS="-L/usr/lib64" make
+    LDFLAGS="-L/usr/lib/musl" make
+    export CONFIG_EXTRA_LDLIBS="-lm -lresolv"
     
     echo "🛠️ Compiling BusyBox..."
     make -j$(nproc)
-    make CONFIG_PREFIX="$ISODIR" install
+    make -s CONFIG_PREFIX="$ISODIR" install
 }
 
 # Function to create initrd directory structure
@@ -323,11 +330,7 @@ copy_apt_to_initrd() {
     
     # Make sure all required directories exist in the initrd
     mkdir -p "$WORKDIR/initrd/usr/lib/x86_64-linux-gnu"
-    
-    # Create symlinks for compatibility if needed
-    if [ ! -e "$WORKDIR/initrd/usr/bin/apt-get" ] && [ -e "$WORKDIR/initrd/usr/bin/apt" ]; then
-        ln -sf apt "$WORKDIR/initrd/usr/bin/apt-get"
-    fi
+
 }
 
 # Function to set up repository structure
@@ -395,12 +398,6 @@ create_initrd_image() {
     mkdir -p "$WORKDIR/initrd/tmp"
     mkdir -p "$WORKDIR/initrd/bin"
     mkdir -p "$WORKDIR/initrd/sbin"
-    
-    # Create symlinks for sh if not already present
-    if [ ! -e "$WORKDIR/initrd/bin/sh" ]; then
-        echo "🔗 Creating symlink for /bin/sh..."
-        ln -sf busybox "$WORKDIR/initrd/bin/sh"
-    fi
     
     echo "📦 Creating initrd image..."
     ( cd "$WORKDIR/initrd" && find . | cpio -H newc -o ) | gzip -9 > "$ISODIR/boot/initrd.img"
@@ -471,25 +468,6 @@ create_rootfs() {
     echo "📦 Copying BusyBox to rootfs..."
     if [ -f "$ISODIR/bin/busybox" ]; then
         cp "$ISODIR/bin/busybox" "$WORKDIR/rootfs/bin/"
-        chmod 755 "$WORKDIR/rootfs/bin/busybox"
-        
-        # Create BusyBox symlinks
-        echo "🔗 Creating BusyBox symlinks..."
-        cd "$WORKDIR/rootfs/bin"
-        for cmd in $(./busybox --list); do
-            ln -sf busybox "$cmd" 2>/dev/null || true
-        done
-        
-        # Create symlinks in /sbin and /usr/bin as well
-        cd "$WORKDIR/rootfs/sbin"
-        for cmd in $(../bin/busybox --list-full | grep sbin); do
-            ln -sf ../bin/busybox "${cmd##*/}" 2>/dev/null || true
-        done
-        
-        cd "$WORKDIR/rootfs/usr/bin"
-        for cmd in $(../../bin/busybox --list-full | grep usr/bin); do
-            ln -sf ../../bin/busybox "${cmd##*/}" 2>/dev/null || true
-        done
     else
         echo "⚠️ BusyBox binary not found in $ISODIR/bin/"
     fi
@@ -652,7 +630,7 @@ main() {
 #    install_dependencies
 #    prepare_directories
 #    build_kernel
-#    build_busybox
+    build_busybox
     create_initrd_structure
     download_apt_packages
     extract_apt_packages
