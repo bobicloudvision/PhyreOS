@@ -76,12 +76,13 @@ build_busybox() {
     cd busybox-${BUSYBOX_VERSION}
 
     echo "🛠️ Configuring BusyBox..."
+    make distclean
     make defconfig
     
     # Disable problematic applets for AlmaLinux 9
     sed -i 's/CONFIG_TC=y/CONFIG_TC=n/' .config
 
-    sed -i 's/# CONFIG_INSTALL_APPLET_SYMLINKS is not set/CONFIG_INSTALL_APPLET_SYMLINKS=n/' .config
+    sed -i 's/CONFIG_INSTALL_APPLET_SYMLINKS=y/CONFIG_INSTALL_APPLET_SYMLINKS=n/' .config  # Disable symlinking applets
     sed -i 's/CONFIG_FEATURE_INSTALLER=y/CONFIG_FEATURE_INSTALLER=n/' .config  # Disable symlinking feature
     sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config  # Enable static binary
     sed -i 's/CONFIG_STATIC_LIBGCC=n/CONFIG_STATIC_LIBGCC=Y/' .config
